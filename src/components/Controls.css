@@ -112,6 +112,13 @@ button:last-child {
   box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
 }
 
+.help-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
 @media (max-width: 640px) {
   .controls {
     padding: 1rem;

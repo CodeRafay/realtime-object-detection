@@ -51,9 +51,9 @@ export default function Controls({
             onChange={(e) => onChangeCamera(e.target.value)}
             className="camera-select"
           >
-            {devices.map((device) => (
+            {devices.map((device, index) => (
               <option key={device.deviceId} value={device.deviceId}>
-                {device.label || `Camera ${devices.indexOf(device) + 1}`}
+                {device.label || `Camera ${index + 1}`}
               </option>
             ))}
           </select>
@@ -62,6 +62,17 @@ export default function Controls({
               Switch Camera
             </button>
           )}
+        </div>
+      )}
+
+      {/* Mobile-friendly camera toggle button */}
+      {devices.length === 0 && (
+        <div className="controls-section">
+          <h3>Camera</h3>
+          <button onClick={onSwitchCamera} className="btn-secondary">
+            📷 Flip Camera
+          </button>
+          <p className="help-text">Toggle between front and back camera</p>
         </div>
       )}
     </div>

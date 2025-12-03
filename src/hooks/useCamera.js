@@ -14,23 +14,41 @@ export function useCamera(initialFacingMode = 'user') {
   const videoRef = useRef(null);
 
   // Enumerate available camera devices
-  useEffect(() => {
-    async function getDevices() {
-      try {
-        const deviceList = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = deviceList.filter(device => device.kind === 'videoinput');
-        setDevices(videoDevices);
-        
-        if (videoDevices.length > 0 && !selectedDeviceId) {
-          setSelectedDeviceId(videoDevices[0].deviceId);
-        }
-      } catch (err) {
-        console.error('Error enumerating devices:', err);
+  const enumerateDevices = async () => {
+    try {
+      const deviceList = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = deviceList.filter(device => device.kind === 'videoinput');
+      console.log('Available cameras:', videoDevices);
+      setDevices(videoDevices);
+      
+      if (videoDevices.length > 0 && !selectedDeviceId) {
+        setSelectedDeviceId(videoDevices[0].deviceId);
       }
+      
+      return videoDevices;
+    } catch (err) {
+      console.error('Error enumerating devices:', err);
+      return [];
     }
+  };
 
-    getDevices();
-  }, [selectedDeviceId]);
+  // Initial device enumeration (will have limited info until permission granted)
+  useEffect(() => {
+    let mounted = true;
+    
+    const loadDevices = async () => {
+      if (mounted) {
+        await enumerateDevices();
+      }
+    };
+    
+    loadDevices();
+    
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Start camera with specified constraints
   const startCamera = async (deviceId = null, customFacingMode = null) => {
@@ -59,6 +77,9 @@ export function useCamera(initialFacingMode = 'user') {
       setStream(mediaStream);
       setError(null);
       setIsInitialized(true);
+
+      // Re-enumerate devices after permission granted (mobile needs this)
+      await enumerateDevices();
 
       // Attach stream to video element if ref exists
       if (videoRef.current) {
