@@ -3,6 +3,7 @@
  */
 
 import { useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { useCamera } from './hooks/useCamera';
 import { useObjectDetection } from './hooks/useObjectDetection';
 import CameraView from './components/CameraView';
@@ -138,6 +139,8 @@ function App() {
           Place <code>yolov8n.onnx</code> in <code>/public/models/</code> directory
         </p>
       </footer>
+
+      <Analytics />
     </div>
   );
 }

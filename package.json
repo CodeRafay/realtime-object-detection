@@ -10,9 +10,10 @@
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
+    "onnxruntime-web": "latest",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "onnxruntime-web": "latest"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/js": "latest",
