@@ -2,7 +2,6 @@
 
 A high-performance, privacy-first web application for real-time object detection that runs **entirely in your browser** using WebGPU acceleration and ONNXRuntime-Web. No server required, no data leaves your device.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-18.2-blue)
 ![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-1.17-green)
 
