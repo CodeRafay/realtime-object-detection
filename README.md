@@ -287,9 +287,9 @@ All component styles are in separate CSS files:
 
 ## 📄 License
 
-MIT License - feel free to use this project for any purpose.
+Apache 2.0 License - feel free to use this project for any purpose.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) - Object detection model
 - [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) - Inference engine
