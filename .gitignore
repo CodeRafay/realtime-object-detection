@@ -25,3 +25,4 @@ dist-ssr
 
 # ONNX Models (too large for git, download separately)
 public/models/*.onnx
+public/models/*.pt
