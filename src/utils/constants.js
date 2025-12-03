@@ -42,11 +42,8 @@ export const COLORS = [
  * Model configuration
  */
 export const MODEL_CONFIG = {
-  // For production: Use GitHub Release URL
-  // For local development: Use '/models/yolov8n.onnx'
-  modelPath: import.meta.env.PROD 
-    ? 'https://github.com/CodeRafay/realtime-object-detection/releases/download/v1.0.0/yolov8n.onnx'
-    : '/models/yolov8n.onnx',
+  // Use relative path - model will be included in deployment
+  modelPath: '/models/yolov8n.onnx',
   inputWidth: 640,
   inputHeight: 640,
   confidenceThreshold: 0.2, 
