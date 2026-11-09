@@ -1,119 +1,83 @@
 /**
- * ONNX Model Loader for YOLOv8
- * Handles model loading with ONNXRuntime-Web and WebGPU
+ * ONNX Model Loader (YOLO-family models)
+ * Tries WebGPU first, falls back to multi-threaded WebAssembly. All ORT calls are serialized.
  */
 
-import * as ort from 'onnxruntime-web';
+// The /webgpu bundle is the one that ships the WebGPU execution provider.
+import * as ort from 'onnxruntime-web/webgpu';
+
+// With WebGPU the WASM threads do no useful work and overlapping calls can deadlock the main
+// thread, so use 1. Without WebGPU use all cores (needs COOP/COEP cross-origin isolation).
+// shortcut: if a GPU exists but the WebGPU EP fails, the WASM fallback runs single-threaded
+// (threads can only be set before the first session); rare, revisit if it shows up in the wild.
+ort.env.wasm.numThreads = navigator.gpu ? 1 : navigator.hardwareConcurrency || 4;
+
+// ORT Web runs on a single WASM instance: overlapping create/run/release calls (e.g. switching
+// models while a frame is still inferring) can hang the page. Every ORT call goes through this queue.
+let queue = Promise.resolve();
+const serial = (fn) => {
+  const result = queue.then(fn);
+  queue = result.catch(() => {});
+  return result;
+};
 
 /**
- * Initialize ONNX Runtime with WebGPU support
+ * Load an ONNX model.
+ * @param {string} modelPath
+ * @returns {Promise<{session: ort.InferenceSession, provider: 'webgpu'|'wasm'}>}
  */
-export async function initializeORT() {
-  try {
-    // Check WebGPU availability
-    if (navigator.gpu) {
-      console.log('✓ WebGPU is available');
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.simd = true;
-      return 'webgpu';
-    } else {
-      console.log('✗ WebGPU not available, falling back to WebAssembly');
-      ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
-      ort.env.wasm.simd = true;
-      return 'wasm';
+export function loadModel(modelPath) {
+  return serial(() => createSession(modelPath));
+}
+
+/** Free a session's GPU/WASM memory, after any inference already queued on it. */
+export function releaseModel(session) {
+  return serial(() => session.release()).catch((error) => console.warn('Release failed:', error));
+}
+
+async function createSession(modelPath) {
+  if (navigator.gpu) {
+    try {
+      const session = await ort.InferenceSession.create(modelPath, {
+        executionProviders: ['webgpu'],
+        graphOptimizationLevel: 'all',
+      });
+      console.log('✓ Model loaded on WebGPU');
+      return { session, provider: 'webgpu' };
+    } catch (error) {
+      console.warn('WebGPU failed, falling back to WebAssembly:', error);
     }
-  } catch (error) {
-    console.error('Error initializing ONNX Runtime:', error);
-    return 'wasm';
   }
+
+  const session = await ort.InferenceSession.create(modelPath, {
+    executionProviders: ['wasm'],
+    graphOptimizationLevel: 'all',
+  });
+  console.log(`✓ Model loaded on WebAssembly (${ort.env.wasm.numThreads} threads, isolated: ${self.crossOriginIsolated})`);
+  return { session, provider: 'wasm' };
 }
 
 /**
- * Load ONNX model
- * @param {string} modelPath - Path to ONNX model
- * @param {string} executionProvider - 'webgpu' or 'wasm'
- * @returns {Promise<ort.InferenceSession>} - Loaded model session
+ * Run inference.
+ * @param {ort.InferenceSession} session
+ * @param {Float32Array} inputTensor - CHW float input
+ * @param {Array<number>} inputShape - [1, 3, H, W]
+ * @returns {Promise<{data: Float32Array, dims: number[]}>} first model output
  */
-export async function loadModel(modelPath, executionProvider = 'webgpu') {
-  try {
-    console.log(`Loading model from ${modelPath}...`);
-    
-    const sessionOptions = {
-      executionProviders: executionProvider === 'webgpu' 
-        ? ['webgpu', 'wasm']
-        : ['wasm'],
-      graphOptimizationLevel: 'all',
-    };
-
-    // Additional WebGPU options
-    if (executionProvider === 'webgpu') {
-      sessionOptions.enableCpuMemArena = false;
-      sessionOptions.enableMemPattern = false;
-    }
-
-    const session = await ort.InferenceSession.create(modelPath, sessionOptions);
-    
-    console.log('✓ Model loaded successfully');
-    console.log('Input names:', session.inputNames);
-    console.log('Output names:', session.outputNames);
-    
-    return session;
-  } catch (error) {
-    console.error('Error loading model:', error);
-    
-    // Try fallback to WASM if WebGPU fails
-    if (executionProvider === 'webgpu') {
-      console.log('Retrying with WebAssembly...');
-      return loadModel(modelPath, 'wasm');
-    }
-    
-    throw error;
-  }
+export async function runInference(session, inputTensor, inputShape) {
+  const tensor = new ort.Tensor('float32', inputTensor, inputShape);
+  const results = await serial(() => session.run({ [session.inputNames[0]]: tensor }));
+  // Seg models (YOLOE) also return mask protos as a second output; only the first is used.
+  const { data, dims } = results[session.outputNames[0]];
+  return { data, dims };
 }
 
 /**
- * Run inference on the model
- * @param {ort.InferenceSession} session - Loaded ONNX session
- * @param {Float32Array} inputTensor - Preprocessed input tensor
- * @param {Array<number>} inputShape - Input shape [batch, channels, height, width]
- * @returns {Promise<Float32Array>} - Model output
+ * Warm up the model with a dummy input (first run compiles GPU shaders).
  */
-export async function runInference(session, inputTensor, inputShape = [1, 3, 640, 640]) {
+export async function warmupModel(session, inputShape) {
   try {
-    // Create ONNX tensor
-    const tensor = new ort.Tensor('float32', inputTensor, inputShape);
-
-    // Get input name from session
-    const inputName = session.inputNames[0];
-
-    // Run inference
-    const feeds = { [inputName]: tensor };
-    const results = await session.run(feeds);
-
-    // Get output (YOLOv8 has single output)
-    const outputName = session.outputNames[0];
-    const output = results[outputName];
-
-    return output.data;
-  } catch (error) {
-    console.error('Error during inference:', error);
-    throw error;
-  }
-}
-
-/**
- * Warm up the model with a dummy input
- * This helps optimize first-run performance
- * @param {ort.InferenceSession} session - Loaded ONNX session
- * @param {Array<number>} inputShape - Input shape
- */
-export async function warmupModel(session, inputShape = [1, 3, 640, 640]) {
-  console.log('Warming up model...');
-  const dummyInput = new Float32Array(inputShape.reduce((a, b) => a * b, 1)).fill(0);
-  
-  try {
-    await runInference(session, dummyInput, inputShape);
-    console.log('✓ Model warmed up');
+    await runInference(session, new Float32Array(inputShape.reduce((a, b) => a * b, 1)), inputShape);
   } catch (error) {
     console.warn('Warmup failed (non-critical):', error);
   }

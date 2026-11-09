@@ -1,5 +1,9 @@
 # 🚀 **Project: Real-Time Web-Based Object Detection (On-Device, No Server)**
 
+> **Note:** this is the original project brief, kept for history. The app has since moved from
+> YOLOv8n to YOLO26 / YOLOE models with object tracking; see [README.md](README.md) for the
+> current design and measured performance.
+
 A browser-based application that performs **high-speed real-time object detection** entirely **on the user’s device** using WebGPU acceleration. The app runs on laptops and modern mobile browsers without requiring any backend server, resulting in **zero latency, zero server cost, and maximum privacy**.
 
 ---

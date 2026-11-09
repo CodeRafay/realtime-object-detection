@@ -17,6 +17,12 @@ npm run preview
 
 # Lint code
 npm run lint
+
+# Run unit tests (tracker + output decoding)
+npm test
+
+# Re-export the three models (needs Python: pip install ultralytics onnxruntime)
+cd public/models && python importModel.py
 ```
 
 ## 📁 Key File Locations
@@ -26,7 +32,10 @@ Configuration:     vite.config.js, package.json
 Main App:          src/App.jsx
 Camera Logic:      src/hooks/useCamera.js
 Detection Logic:   src/hooks/useObjectDetection.js
-Model Settings:    src/utils/constants.js
+Tracking:          src/utils/tracker.js
+Model Settings:    src/utils/constants.js (MODELS, MODEL_CONFIG)
+Model Files:       public/models/model-{fast,accurate,more}.onnx, labels.json
+Model Export:      public/models/importModel.py
 Documentation:     README.md, DEPLOYMENT.md
 ```
 
@@ -34,10 +43,12 @@ Documentation:     README.md, DEPLOYMENT.md
 
 ### Change Detection Threshold
 
+Use the **Min confidence** slider in the app. To change its default:
+
 **File**: `src/utils/constants.js`
 
 ```javascript
-confidenceThreshold: 0.25; // Lower = more detections
+confidenceThreshold: 0.25, // Lower = more detections, more wrong boxes
 ```
 
 ### Change Camera Resolution
@@ -51,21 +62,20 @@ idealHeight: 720;
 
 ### Change Model
 
+Use the **Quality** menu in the app (Fast / Accurate / More objects). To swap a model file:
+
 **File**: `src/utils/constants.js`
 
 ```javascript
-modelPath: "/models/yolov8n.onnx"; // Update filename
+fast: { label: "Fast", path: "/models/model-fast.onnx", inputWidth: 640, inputHeight: 384 },
 ```
 
-### Add Custom Classes
+### Add Custom Classes (More objects tier)
 
-**File**: `src/utils/constants.js`
+**File**: `public/models/importModel.py`: add names to `NAMES`, then re-run the export:
 
-```javascript
-export const COCO_CLASSES = [
-  "class1",
-  "class2", // ... your classes
-];
+```bash
+cd public/models && python importModel.py
 ```
 
 ## 🐛 Troubleshooting Quick Fixes
@@ -80,8 +90,8 @@ navigator.mediaDevices.getUserMedia({ video: true });
 ### Model not loading
 
 ```bash
-# Verify file exists:
-dir public\models\yolov8n.onnx
+# Verify the model files exist:
+dir public\models\model-*.onnx
 ```
 
 ### Check WebGPU support
@@ -103,10 +113,12 @@ npm run build
 
 ### Adjust Input Size (Performance)
 
+The input size is baked into each model at export. Change it in `TIERS` in
+`public/models/importModel.py`, re-export, then match it in `src/utils/constants.js`:
+
 ```javascript
-// src/utils/constants.js
-inputWidth: 416,   // Smaller = faster
-inputHeight: 416,
+inputWidth: 512,   // Smaller = faster, misses more small objects
+inputHeight: 320,
 ```
 
 ### Increase Max Detections
@@ -123,13 +135,16 @@ maxDetections: 200,  // Default: 100
 iouThreshold: 0.3,  // Lower = more filtering
 ```
 
-## 📊 Performance Targets
+## 📊 Measured Performance
 
-| Device  | Target FPS | Input Size |
-| ------- | ---------- | ---------- |
-| Laptop  | 40-60      | 640x640    |
-| Mobile  | 20-30      | 640x640    |
-| Low-end | 10-20      | 416x416    |
+Intel UHD 620 laptop iGPU, Chrome, WebGPU, 640×384 input. Boxes are redrawn at display
+rate (~60 fps) between detections, so motion looks smooth even at a few det/s.
+
+| Quality      | Model     | Detections/sec | Accuracy (mAP, COCO val) |
+| ------------ | --------- | -------------- | ------------------------ |
+| Fast         | YOLO26n   | 7–8            | 0.380                    |
+| Accurate     | YOLO26s   | ~2             | 0.475                    |
+| More objects | YOLOE-26s | ~2             | 0.370 (268 classes)      |
 
 ## 🌐 Browser Requirements
 
@@ -138,7 +153,8 @@ iouThreshold: 0.3,  // Lower = more filtering
 
 ## 📦 Deployment Checklist
 
-- [ ] Model file in `public/models/`
+- [ ] `model-fast.onnx`, `model-accurate.onnx`, `model-more.onnx`, `labels.json` in `public/models/`
+- [ ] `npm test` passes
 - [ ] Run `npm run build`
 - [ ] Test with `npm run preview`
 - [ ] Upload `dist/` folder
@@ -156,7 +172,7 @@ iouThreshold: 0.3,  // Lower = more filtering
 ## 💡 Pro Tips
 
 1. Use **Chrome DevTools** → Performance tab to profile
-2. Lower camera resolution for better FPS
+2. Keep the tab in front: Chrome throttles hidden/covered windows to ~2 fps
 3. Test on actual devices, not just browser DevTools mobile mode
 4. Model loads once and caches - refresh won't re-download
 5. Check browser console for detailed error messages

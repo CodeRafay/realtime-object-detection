@@ -14,7 +14,9 @@ A fully functional, browser-based real-time object detection application that:
 
 - Runs 100% client-side with no server requirements
 - Uses WebGPU for hardware acceleration
-- Achieves 30-60 FPS on laptops, 15-30 FPS on mobile
+- Offers three quality tiers: Fast (YOLO26n), Accurate (YOLO26s), More objects (YOLOE-26s, 268 classes)
+- Tracks objects with stable IDs and draws boxes at display rate between detections
+- Runs on webcam or an uploaded video file
 - Provides complete privacy (no data transmission)
 - Works offline after initial load
 - Supports multiple cameras
@@ -66,11 +68,18 @@ realTimeOD/
 │       ├── constants.js          ✅ Configuration constants
 │       ├── modelLoader.js        ✅ ONNX model loading
 │       ├── preprocessing.js      ✅ Image preprocessing
-│       └── postprocessing.js     ✅ NMS & output processing
+│       ├── postprocessing.js     ✅ NMS & output processing
+│       ├── tracker.js            ✅ Object tracking (stable IDs)
+│       └── tracker.test.js       ✅ Unit tests (npm test)
 │
 └── 📦 public/
     └── models/
-        └── README.md             ✅ Model setup instructions
+        ├── README.md             ✅ Model setup instructions
+        ├── importModel.py        ✅ Exports the three models
+        ├── model-fast.onnx       ✅ YOLO26n
+        ├── model-accurate.onnx   ✅ YOLO26s
+        ├── model-more.onnx       ✅ YOLOE-26s
+        └── labels.json           ✅ Class names for model-more
 ```
 
 **Total Files Created**: 35 files
@@ -104,15 +113,19 @@ realTimeOD/
 
 ### Phase 4: Performance Optimization ✅
 
-- [x] RequestAnimationFrame loop
-- [x] OffscreenCanvas support
-- [x] FPS monitoring
+- [x] Inference once per new video frame (requestVideoFrameCallback)
+- [x] Separate display-rate drawing loop with box extrapolation
+- [x] fp16 models, 640×384 input, reused buffers
+- [x] Detections/sec monitoring
 - [x] Memory-efficient tensor handling
 - [x] Optimized rendering pipeline
 
 ### Phase 5: UI/UX Features ✅
 
-- [x] FPS counter display
+- [x] Detections/sec display
+- [x] Quality tier selector (Fast / Accurate / More objects)
+- [x] Min confidence slider
+- [x] Video file upload
 - [x] Camera device selector
 - [x] Camera switching
 - [x] Start/Stop controls
@@ -167,14 +180,14 @@ realTimeOD/
 - Graceful WebAssembly fallback
 - Wide model format support
 
-### 4. YOLOv8n Model
+### 4. YOLO26 + YOLOE Models
 
-**Why**:
+**Why** (chosen by measuring 8 candidates on 500 unseen COCO val2017 images):
 
-- Small size (~6MB)
-- Good balance of speed/accuracy
-- 80 COCO classes
-- Well-documented and maintained
+- YOLO26n (Fast): as accurate as the original yolov8n (0.380 vs 0.393 mAP), ~1.8× faster
+- YOLO26s (Accurate): best accuracy tested (0.475 mAP)
+- YOLOE-26s (More objects): open-vocabulary, 268 classes incl. smartwatch and glasses, less accurate (0.370)
+- Open Images V7 models (601 classes) were tested and rejected (0.15–0.20 mAP)
 
 ### 5. Canvas-based Visualization
 
@@ -220,7 +233,8 @@ Pure functions for processing:
 
 - `preprocessing.js`: Image transformations
 - `postprocessing.js`: Detection filtering
-- `modelLoader.js`: Model operations
+- `modelLoader.js`: Model operations (serialized ONNX Runtime calls)
+- `tracker.js`: Object tracking
 
 ### 4. Configuration Objects
 
@@ -242,31 +256,23 @@ Graceful error handling:
 
 ## 🚀 Performance Characteristics
 
-### Inference Speed
+### Inference Speed (measured, Intel UHD 620 laptop iGPU, Chrome, WebGPU)
 
-- **Laptop (WebGPU)**: 30-60 FPS
-- **Mobile (WebGPU)**: 15-30 FPS
-- **Laptop (WASM)**: 10-20 FPS
-- **Mobile (WASM)**: 5-10 FPS
+| Quality      | Inference | Detections/sec |
+| ------------ | --------- | -------------- |
+| Fast         | ~90 ms    | 7–8            |
+| Accurate     | ~200 ms   | ~2             |
+| More objects | ~245 ms   | ~2             |
+
+Boxes are redrawn at display rate (~60 fps) between detections. WebAssembly is 3–4× slower
+than WebGPU. Mobile has not been measured yet.
 
 ### Model Size
 
-- **YOLOv8n ONNX**: ~6MB
-- **JavaScript Bundle**: ~500KB
-- **Total App Size**: ~6.5MB
+- **Fast / Accurate / More objects**: 5 MB / 19 MB / 21 MB (fp16; only the used tier is downloaded)
+- **JavaScript Bundle**: ~275 KB (~90 KB gzipped)
 
-### Memory Usage
-
-- **Base Application**: ~50MB
-- **With Model Loaded**: ~200MB
-- **During Inference**: ~300MB
-
-### Loading Times
-
-- **Model Download**: 1-3 seconds (6MB over broadband)
-- **Model Initialization**: 1-2 seconds
-- **First Inference**: 100-200ms
-- **Subsequent**: 16-33ms (30-60 FPS)
+Memory use and load times have not been measured.
 
 ---
 
@@ -275,15 +281,15 @@ Graceful error handling:
 ### Easily Adjustable Parameters
 
 ```javascript
-// Detection Sensitivity
-confidenceThreshold: 0.25; // Lower = more detections
+// Detection Sensitivity (default of the Min confidence slider)
+confidenceThreshold: 0.25; // Lower = more detections, more wrong boxes
 
 // Overlap Filtering
 iouThreshold: 0.45; // Lower = more filtering
 
-// Input Resolution
+// Input Resolution (per tier in MODELS; must match the exported model)
 inputWidth: 640; // Lower = faster, less accurate
-inputHeight: 640;
+inputHeight: 384;
 
 // Camera Quality
 idealWidth: 1280; // Lower = better performance
@@ -351,7 +357,7 @@ idealHeight: 720;
 
 ### Performance Testing
 
-- [ ] Monitor FPS across devices
+- [ ] Monitor detections/sec across devices
 - [ ] Check memory usage over time
 - [ ] Test model loading time
 - [ ] Verify no memory leaks
@@ -492,18 +498,19 @@ idealHeight: 720;
 | Requirement          | Status | Notes                  |
 | -------------------- | ------ | ---------------------- |
 | Browser-based        | ✅     | React web app          |
-| Real-time detection  | ✅     | 30-60 FPS              |
+| Real-time detection  | ✅     | 7–8 det/s (Fast, iGPU) |
 | On-device processing | ✅     | No server              |
 | WebGPU acceleration  | ✅     | With WASM fallback     |
 | No server required   | ✅     | Static hosting         |
-| High FPS             | ✅     | 30-60 on laptop        |
+| High FPS             | ⚠️     | Boxes ~60 fps; model 7–8/s on iGPU |
 | Mobile support       | ✅     | Responsive design      |
 | Camera access        | ✅     | Front/back switching   |
 | Privacy-first        | ✅     | Zero data transmission |
-| Lightweight          | ✅     | ~6.5MB total           |
+| Lightweight          | ✅     | 5 MB model (Fast)      |
 | Offline capable      | ✅     | After first load       |
 
-**All requirements satisfied!** ✅
+All requirements are met except the original 30–60 FPS target: on an integrated laptop GPU
+the model runs 7–8 times per second (Fast); boxes are still drawn smoothly at display rate.
 
 ---
 
@@ -519,11 +526,10 @@ The Real-Time Object Detection web application has been fully implemented accord
    npm install
    ```
 
-2. **Get the model** (see MODEL_SETUP.md):
+2. **Models are included** in `public/models/`. To re-export them (see MODEL_SETUP.md):
 
    ```bash
-   # Export YOLOv8n to ONNX
-   # Place in public/models/yolov8n.onnx
+   cd public/models && python importModel.py
    ```
 
 3. **Start developing**:

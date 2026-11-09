@@ -8,6 +8,17 @@ export default defineConfig({
     port: 3000,
     open: true,
     https: false, // Enable HTTPS in production for camera access
+    // Same as vercel.json: cross-origin isolation enables multi-threaded WASM
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
+  },
+  preview: {
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
   },
   build: {
     outDir: 'dist',
@@ -15,7 +26,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'onnxruntime': ['onnxruntime-web'],
+          'onnxruntime': ['onnxruntime-web/webgpu'],
         },
       },
     },

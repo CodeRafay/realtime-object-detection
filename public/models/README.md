@@ -1,38 +1,27 @@
 # Model Files Directory
 
-This directory should contain your ONNX model files.
+The app loads its models from here (served at `/models/`). All files are committed, so a fresh
+clone works without any setup.
 
-## Required File
+| File                  | Quality tier | Model     | Classes | Size  |
+| --------------------- | ------------ | --------- | ------- | ----- |
+| `model-fast.onnx`     | Fast         | YOLO26n   | 80 COCO | 5 MB  |
+| `model-accurate.onnx` | Accurate     | YOLO26s   | 80 COCO | 19 MB |
+| `model-more.onnx`     | More objects | YOLOE-26s | 268     | 21 MB |
+| `labels.json`         | (class names for `model-more.onnx`, in model order) | | | |
 
-Place your YOLOv8n ONNX model here:
+All models are fp16 with a 640×384 input.
 
-- `yolov8n.onnx` (approximately 6MB)
+## Re-exporting
 
-## How to Get the Model
+`importModel.py` regenerates every file above:
 
-See the [MODEL_SETUP.md](../../MODEL_SETUP.md) guide in the root directory for detailed instructions.
+```bash
+pip install ultralytics onnxruntime
+cd public/models && python importModel.py
+```
 
-### Quick Setup:
+To make the **More objects** tier detect different things, edit `NAMES` in `importModel.py`
+before running it. See [MODEL_SETUP.md](../../MODEL_SETUP.md) for details.
 
-1. Install Ultralytics:
-
-   ```bash
-   pip install ultralytics
-   ```
-
-2. Export YOLOv8n to ONNX:
-
-   ```python
-   from ultralytics import YOLO
-   model = YOLO('yolov8n.pt')
-   model.export(format='onnx', opset=12, simplify=True, dynamic=False, imgsz=640)
-   ```
-
-3. Move the file here:
-   ```bash
-   mv yolov8n.onnx public/models/
-   ```
-
-## Note
-
-The model file is excluded from version control (see `.gitignore`) due to its size. Each developer/deployment must obtain the model separately.
+`*.pt` (PyTorch) weights in this folder are git-ignored.

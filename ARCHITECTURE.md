@@ -54,18 +54,19 @@
        ▼
 ┌──────────────────┐
 │  Preprocessing   │
-│  - Resize        │
+│  - Letterbox     │
 │  - Normalize     │
 │  - CHW Format    │
 └──────┬───────────┘
-       │ Tensor [1,3,640,640]
+       │ Tensor [1,3,384,640]
        ▼
 ┌──────────────────┐
 │  ONNX Runtime    │
 │  - WebGPU/WASM   │
-│  - YOLOv8n       │
+│  - YOLO26n/s or  │
+│    YOLOE-26s     │
 └──────┬───────────┘
-       │ Output [1,84,8400]
+       │ Output [1,4+classes,5040]
        ▼
 ┌──────────────────┐
 │ Postprocessing   │
@@ -76,12 +77,23 @@
        │ Detections Array
        ▼
 ┌──────────────────┐
+│  Tracker         │
+│  - Stable IDs    │
+│  - Velocity      │
+│  - Min-conf gate │
+└──────┬───────────┘
+       │ predict(now), every display frame
+       ▼
+┌──────────────────┐
 │  Canvas Drawing  │
 │  - Bounding Boxes│
-│  - Labels        │
+│  - Labels + IDs  │
 │  - Confidence    │
 └──────────────────┘
 ```
+
+Inference runs once per new video frame; drawing runs at display rate and extrapolates
+boxes in between, so they move smoothly even when the model manages only a few runs per second.
 
 ## Component Hierarchy
 
@@ -93,8 +105,9 @@ App.jsx
 │       └── <canvas> element
 │
 ├── Controls.jsx
-│   ├── Model controls
-│   └── Camera selector
+│   ├── Model controls (load, start/stop, Quality tier, Min confidence slider)
+│   ├── Camera selector
+│   └── Video file upload
 │
 ├── FPSMonitor.jsx
 │
@@ -116,13 +129,15 @@ useCamera
     └── changeCamera()
 
 useObjectDetection
-├── useState (model, isLoading, isRunning, fps, etc.)
-├── useEffect (cleanup animation frame)
-├── useRef (animationFrameRef, fpsCounterRef)
-├── useCallback (initializeModel)
+├── useState (model, isLoading, isRunning, fps, detectionCount, threshold, error)
+├── useEffect (stop loop on unmount)
+├── useRef (loopIdRef, trackerRef, modelRef, thresholdRef)
+├── useCallback (initializeModel(tier?))
 ├── useCallback (detectObjects)
 ├── useCallback (startDetection)
-└── useCallback (stopDetection)
+├── useCallback (stopDetection)
+├── useCallback (setThreshold)
+└── useCallback (getTracks(now)) → read by BoundingBoxCanvas every display frame
 ```
 
 ## Utility Module Structure
@@ -133,24 +148,27 @@ utils/
 ├── constants.js
 │   ├── COCO_CLASSES[]
 │   ├── COLORS[]
+│   ├── MODELS{fast, accurate, more}
 │   ├── MODEL_CONFIG{}
 │   └── CAMERA_CONFIG{}
 │
-├── modelLoader.js
-│   ├── initializeORT()
+├── modelLoader.js          (every ORT call goes through one serial queue)
 │   ├── loadModel()
+│   ├── releaseModel()
 │   ├── runInference()
 │   └── warmupModel()
 │
 ├── preprocessing.js
-│   ├── preprocessImage()
-│   └── preprocessImageOffscreen()
+│   └── preprocessImage()   (reuses one canvas + tensor buffer)
 │
-└── postprocessing.js
-    ├── calculateIoU()
-    ├── nonMaxSuppression()
-    ├── processOutput()
-    └── scaleDetections()
+├── postprocessing.js
+│   ├── calculateIoU()
+│   ├── nonMaxSuppression()
+│   ├── processOutput()     (output shape read from the model)
+│   └── scaleDetections()
+│
+└── tracker.js
+    └── createTracker() → { update(detections, now, minConf), predict(now) }
 ```
 
 ## Execution Flow
@@ -163,32 +181,29 @@ utils/
 
 2. User Clicks "Load Model"
    └── initializeModel()
-       ├── initializeORT()
-       ├── loadModel()
-       └── warmupModel()
+       ├── loadModel(Fast) + labels   [WebGPU, else WASM]
+       ├── warmupModel() + time 3 runs
+       └── if fast enough: load Accurate, release Fast
 
 3. User Clicks "Start Detection"
-   └── startDetection()
-       └── detectLoop() [recursive with requestAnimationFrame]
-           ├── Get video frame
-           ├── preprocessImage()
-           │   ├── Resize & pad
-           │   ├── Normalize
-           │   └── Convert to CHW
-           ├── runInference()
-           │   └── ONNX Runtime executes
-           ├── processOutput()
-           │   ├── Parse predictions
-           │   ├── Filter by confidence
-           │   └── Apply NMS
-           ├── scaleDetections()
-           ├── Update state (detections, fps)
-           ├── Canvas redraws
-           └── Schedule next frame
+   ├── startDetection()
+   │   └── detectLoop() [once per new video frame: requestVideoFrameCallback]
+   │       ├── preprocessImage()     letterbox → CHW tensor
+   │       ├── runInference()        ONNX Runtime (serialized)
+   │       ├── processOutput()       decode + NMS
+   │       ├── scaleDetections()     back to video pixels
+   │       ├── tracker.update()      IDs, velocity, min-confidence gate
+   │       └── once per second: update det/s + object count
+   │
+   └── BoundingBoxCanvas draw loop [requestAnimationFrame, display rate]
+       └── draw getTracks(performance.now())  extrapolated boxes
 
-4. User Clicks "Stop Detection"
+4. User Changes Quality
+   └── stopDetection() → initializeModel(tier) → old session released after any queued run
+
+5. User Clicks "Stop Detection"
    └── stopDetection()
-       └── Cancel animation frame
+       └── Loop id bumped (in-flight run exits), tracker dropped, draw loop cancelled
 ```
 
 ## State Management
@@ -202,37 +217,40 @@ App Level State:
 │   ├── error
 │   └── isInitialized
 │
+├── Video File State (App)
+│   └── videoFileUrl
+│
 └── Detection State (useObjectDetection)
-    ├── model
+    ├── model { session, provider, cfg, tier, labels, ms }
     ├── isLoading
     ├── isRunning
-    ├── fps
-    ├── detections
-    ├── executionProvider
+    ├── fps (detections/sec)
+    ├── detectionCount
+    ├── threshold (Min confidence)
     └── error
+
+Per-frame data (tracks) lives in a ref, not React state, so drawing never re-renders React.
 ```
 
 ## Performance Optimization Points
 
 ```
 1. Preprocessing
-   └── OffscreenCanvas when available
-       └── Faster than regular canvas
+   └── One reused canvas + tensor buffer
+       └── 640×384 input fits 16:9 video with little padding
 
 2. Inference
-   └── WebGPU execution provider
-       └── GPU acceleration
-           └── Fallback to WebAssembly
+   └── WebGPU execution provider, fp16 models
+       └── Fallback to multi-threaded WebAssembly
+           └── One video frame → at most one run (requestVideoFrameCallback)
 
 3. Rendering
-   └── requestAnimationFrame
-       └── Synced with display refresh
-           └── No unnecessary renders
+   └── Separate requestAnimationFrame draw loop
+       └── Boxes extrapolated between detections
+           └── No React re-render per frame
 
 4. Memory Management
-   └── Reuse tensor buffers
-       └── Minimal garbage collection
-           └── Stable performance
+   └── Reused buffers; old model sessions released when switching tiers
 ```
 
 ## Browser API Usage
@@ -247,9 +265,10 @@ App Level State:
 │ • HTMLVideoElement              │ Video display
 │ • HTMLCanvasElement             │ Drawing
 │ • CanvasRenderingContext2D      │ 2D graphics
-│ • OffscreenCanvas               │ Performance
-│ • requestAnimationFrame         │ Smooth loop
-│ • performance.now()             │ FPS tracking
+│ • requestVideoFrameCallback     │ Inference loop
+│ • requestAnimationFrame         │ Drawing loop
+│ • performance.now()             │ Timing / tracking
+│ • URL.createObjectURL()         │ Video upload
 │ • navigator.gpu                 │ WebGPU check
 │ • WebGPU API                    │ GPU compute
 └────────────────────────────────┘
@@ -266,7 +285,7 @@ App Level State:
 │  │  • index.html                       │ │
 │  │  • JavaScript bundle                │ │
 │  │  • CSS files                        │ │
-│  │  • ONNX model (6MB)                 │ │
+│  │  • ONNX models (5-21 MB)            │ │
 │  └────────────────────────────────────┘ │
 │                                          │
 │  ┌────────────────────────────────────┐ │
@@ -281,7 +300,7 @@ App Level State:
 ┌─────────────────────────────────────────┐
 │          User's Browser                  │
 │  • Downloads app (one-time)              │
-│  • Caches model                          │
+│  • Caches models                         │
 │  • Runs 100% locally                     │
 │  • No further server contact             │
 └─────────────────────────────────────────┘
@@ -317,11 +336,13 @@ App Level State:
 │  ❌ No Network Transmission           │
 │  ❌ No Server Processing              │
 │  ❌ No Data Storage                   │
-│  ❌ No Tracking                       │
+│  ❌ No Video Uploads                  │
 │  ❌ No Cookies                        │
 │                                       │
 └──────────────────────────────────────┘
 ```
+
+The deployed site uses Vercel Web Analytics (anonymous page views). Camera and video frames never leave the device.
 
 ## Technology Stack Layers
 

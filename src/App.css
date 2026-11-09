@@ -41,6 +41,7 @@
   grid-template-columns: 1fr 400px;
   gap: 2rem;
   height: 100%;
+  align-items: start; /* don't stretch the video panel to the sidebar's height */
 }
 
 .sidebar {

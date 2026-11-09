@@ -1,8 +1,7 @@
 .camera-view {
   position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 500px;
+  min-height: 500px; /* no height: 100%, so the panel follows the video, not the sidebar's height */
   background-color: var(--bg-medium);
   border-radius: 12px;
   overflow: hidden;

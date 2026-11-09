@@ -2,7 +2,7 @@
  * Main App Component
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { useCamera } from './hooks/useCamera';
 import { useObjectDetection } from './hooks/useObjectDetection';
@@ -31,18 +31,54 @@ function App() {
     error: modelError,
     isRunning: isDetecting,
     fps,
-    detections,
+    detectionCount,
+    getTracks,
+    threshold,
+    setThreshold,
+    tier,
     executionProvider,
     initializeModel,
     startDetection,
     stopDetection,
   } = useObjectDetection();
 
+  const [videoFileUrl, setVideoFileUrl] = useState(null);
+
   // Auto-start camera on mount
   useEffect(() => {
     startCamera();
     return () => stopCamera();
   }, []);
+
+  // Free the uploaded file's blob URL when it is replaced or the app unmounts
+  useEffect(() => () => videoFileUrl && URL.revokeObjectURL(videoFileUrl), [videoFileUrl]);
+
+  // Restart detection after the video source changes, like camera switching does
+  const withDetectionPaused = async (switchSource) => {
+    const wasDetecting = isDetecting;
+    if (wasDetecting) stopDetection();
+    await switchSource();
+    if (wasDetecting && model) setTimeout(() => handleStartDetection(), 500);
+  };
+
+  const handleVideoFile = (file) => withDetectionPaused(async () => {
+    stopCamera();
+    const url = URL.createObjectURL(file);
+    const video = videoRef.current;
+    video.srcObject = null; // srcObject takes precedence over src
+    video.src = url;
+    video.loop = true;
+    setVideoFileUrl(url);
+    await video.play().catch(() => {});
+  });
+
+  const handleUseCamera = () => withDetectionPaused(async () => {
+    const video = videoRef.current;
+    video.removeAttribute('src');
+    video.load();
+    setVideoFileUrl(null);
+    await startCamera(selectedDeviceId);
+  });
 
   const handleStartDetection = () => {
     if (videoRef.current && model) {
@@ -92,7 +128,8 @@ function App() {
           <CameraView 
             videoRef={videoRef}
             stream={stream}
-            detections={detections}
+            isFilePlaying={!!videoFileUrl}
+            getTracks={getTracks}
             isDetecting={isDetecting}
           />
 
@@ -108,6 +145,13 @@ function App() {
               onLoadModel={handleLoadModel}
               onChangeCamera={handleChangeCamera}
               onSwitchCamera={handleSwitchCamera}
+              isFilePlaying={!!videoFileUrl}
+              onVideoFile={handleVideoFile}
+              onUseCamera={handleUseCamera}
+              tier={tier}
+              onChangeTier={(t) => { stopDetection(); initializeModel(t); }}
+              threshold={threshold}
+              onChangeThreshold={setThreshold}
             />
 
             {isDetecting && (
@@ -124,9 +168,9 @@ function App() {
             <div className="info-box">
               <h3>ℹ️ Info</h3>
               <ul>
-                <li>Camera: {isCameraInitialized ? '✓ Active' : '✗ Inactive'}</li>
+                <li>Source: {videoFileUrl ? '🎞️ Video file' : isCameraInitialized ? '✓ Camera' : '✗ Inactive'}</li>
                 <li>Model: {model ? '✓ Loaded' : '✗ Not loaded'}</li>
-                <li>Detections: {detections.length}</li>
+                <li>Objects: {detectionCount}</li>
               </ul>
             </div>
           </div>
@@ -136,7 +180,7 @@ function App() {
       <footer className="app-footer">
         <p>100% client-side • Zero server • Maximum privacy</p>
         <p className="model-info">
-          Place <code>yolov8n.onnx</code> in <code>/public/models/</code> directory
+          YOLO26 + YOLOE open-vocabulary models • ByteTrack-style tracking
         </p>
       </footer>
 

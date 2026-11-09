@@ -4,9 +4,10 @@ Complete guide for deploying your Real-Time Object Detection app to various host
 
 ## 📋 Pre-Deployment Checklist
 
-- [ ] ONNX model file (`yolov8n.onnx`) is in `public/models/`
+- [ ] Model files (`model-fast.onnx`, `model-accurate.onnx`, `model-more.onnx`, `labels.json`) are in `public/models/`
+- [ ] Unit tests pass (`npm test`)
 - [ ] Application builds successfully (`npm run build`)
-- [ ] Model path is correct in `src/utils/constants.js`
+- [ ] Model paths are correct in `MODELS` in `src/utils/constants.js`
 - [ ] Camera permissions are handled properly
 - [ ] Test in production mode locally (`npm run preview`)
 
@@ -326,11 +327,12 @@ Cross-Origin-Opener-Policy: same-origin
 
 ### Model File Size
 
-The `yolov8n.onnx` file is ~6MB. Ensure:
+The three models are 5 MB (Fast), 19 MB (Accurate) and 21 MB (More objects); a visitor
+only downloads the tier they use. Ensure:
 
-- It's included in your build
-- Your hosting platform supports files of this size
-- It's in the correct path (`public/models/`)
+- They're included in your build (Vite copies `public/` into `dist/`)
+- Your hosting platform supports files of this size (all are under GitHub's 100 MB limit)
+- They're in the correct path (`public/models/`)
 
 ---
 
@@ -341,9 +343,11 @@ After deployment, test these features:
 1. **Camera Access**: Allow permissions and verify video stream
 2. **Model Loading**: Check console for loading errors
 3. **WebGPU**: Verify execution provider in UI
-4. **Detection**: Test object detection works smoothly
-5. **Mobile**: Test on mobile devices
-6. **Performance**: Check FPS on different devices
+4. **Detection**: Test object detection works smoothly and boxes sit on the objects
+5. **Quality tiers**: Switch Fast / Accurate / More objects while detecting
+6. **Video upload**: Upload a clip and check boxes follow moving objects
+7. **Mobile**: Test on mobile devices
+8. **Performance**: Check detections/sec on different devices (keep the tab in front)
 
 ---
 
@@ -351,7 +355,7 @@ After deployment, test these features:
 
 ### Issue: "Model not found"
 
-**Solution**: Ensure `yolov8n.onnx` is in `public/models/` before building.
+**Solution**: Ensure the `model-*.onnx` files and `labels.json` are in `public/models/` before building.
 
 ### Issue: Camera not working
 

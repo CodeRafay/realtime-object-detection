@@ -4,6 +4,7 @@
   left: 0;
   width: 100%;
   height: 100%;
+  object-fit: contain; /* letterbox exactly like .video-element so boxes line up with the picture */
   pointer-events: none;
   z-index: 5;
 }

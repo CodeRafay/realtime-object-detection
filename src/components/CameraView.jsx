@@ -9,8 +9,9 @@ import './CameraView.css';
 
 export default function CameraView({ 
   videoRef, 
-  stream, 
-  detections, 
+  stream,
+  isFilePlaying,
+  getTracks,
   isDetecting 
 }) {
   useEffect(() => {
@@ -31,11 +32,11 @@ export default function CameraView({
         />
         <BoundingBoxCanvas 
           videoRef={videoRef} 
-          detections={detections} 
+          getTracks={getTracks}
           isDetecting={isDetecting} 
         />
       </div>
-      {!stream && (
+      {!stream && !isFilePlaying && (
         <div className="no-stream-message">
           <p>📷 Camera not active</p>
           <p className="hint">Click &ldquo;Start Camera&rdquo; to begin</p>

@@ -2,17 +2,20 @@
 
 A high-performance, privacy-first web application for real-time object detection that runs **entirely in your browser** using WebGPU acceleration and ONNXRuntime-Web. No server required, no data leaves your device.
 
-![React](https://img.shields.io/badge/React-18.2-blue)
-![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-1.17-green)
+![React](https://img.shields.io/badge/React-18.3-blue)
+![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-1.23-green)
 
 ## ✨ Features
 
-- 🚀 **High-Speed Inference**: 30-60 FPS on laptops, 15-30 FPS on modern mobile devices
-- 🔒 **Complete Privacy**: All processing happens locally, zero data transmission
+- 🚀 **Smooth Real-Time Detection**: 7–8 detections/sec on an integrated laptop GPU (Fast tier), with boxes redrawn at display rate in between
+- 🔒 **Complete Privacy**: All processing happens locally; camera and video frames never leave the device
 - ⚡ **WebGPU Accelerated**: Leverages GPU for maximum performance
 - 📱 **Mobile Compatible**: Works on both desktop and mobile browsers
 - 🎥 **Multi-Camera Support**: Switch between front/back cameras
-- 🎨 **Real-Time Visualization**: Live bounding boxes with class labels and confidence scores
+- 🎯 **Three Quality Tiers**: Fast (YOLO26n), Accurate (YOLO26s), and More objects (YOLOE, 268 classes incl. smartwatch, glasses, earbuds, keys; you choose the list)
+- 🛰️ **Object Tracking**: ByteTrack-style tracker gives each object a stable ID and smooth, gliding boxes
+- 🎞️ **Video Upload**: Run detection on a local video file (e.g. traffic footage), not just the webcam
+- 🎨 **Real-Time Visualization**: Live bounding boxes with class labels, track IDs and confidence scores
 - 📊 **Performance Monitoring**: Real-time FPS counter and execution provider display
 - 🌐 **Offline Capable**: Works without internet after initial load
 
@@ -22,9 +25,10 @@ A high-performance, privacy-first web application for real-time object detection
 
 - **Frontend Framework**: React 18.2 with Hooks
 - **Build Tool**: Vite 5.0 (fast HMR and optimized builds)
-- **AI Runtime**: ONNX Runtime Web 1.17
-- **Execution Provider**: WebGPU (with WebAssembly fallback)
-- **Model**: YOLOv8n (80 COCO classes)
+- **AI Runtime**: ONNX Runtime Web 1.23
+- **Execution Provider**: WebGPU (with multi-threaded WebAssembly fallback)
+- **Models**: YOLO26n (Fast) / YOLO26s (Accurate), 80 COCO classes; YOLOE-26s (More objects), open-vocabulary. All fp16, 384×640
+- **Tracking**: Lightweight ByteTrack-style IoU tracker with velocity prediction
 
 ### Project Structure
 
@@ -32,7 +36,11 @@ A high-performance, privacy-first web application for real-time object detection
 realTimeOD/
 ├── public/
 │   └── models/
-│       └── yolov8n.onnx          # Place your ONNX model here
+│       ├── importModel.py        # Exports all three models + labels.json
+│       ├── model-fast.onnx       # Fast tier (YOLO26n)
+│       ├── model-accurate.onnx   # Accurate tier (YOLO26s)
+│       ├── model-more.onnx       # More objects tier (YOLOE-26s)
+│       └── labels.json           # Class names of the More objects tier, in model order
 ├── src/
 │   ├── components/
 │   │   ├── App.jsx               # Main application component
@@ -47,7 +55,8 @@ realTimeOD/
 │   │   ├── constants.js          # Configuration and constants
 │   │   ├── modelLoader.js        # ONNX model loading
 │   │   ├── preprocessing.js      # Image preprocessing
-│   │   └── postprocessing.js     # NMS and output processing
+│   │   ├── postprocessing.js     # NMS and output processing
+│   │   └── tracker.js            # Object tracking (stable IDs)
 │   ├── main.jsx                  # Application entry point
 │   └── index.css                 # Global styles
 ├── index.html
@@ -62,7 +71,7 @@ realTimeOD/
 
 - Node.js 18+ installed
 - Modern browser with WebGPU support (Chrome 113+, Edge 113+)
-- YOLOv8n ONNX model file
+- Python 3.9+ only if you want to re-export the model with different classes
 
 ### Installation
 
@@ -78,30 +87,18 @@ realTimeOD/
    npm install
    ```
 
-3. **Download the YOLOv8n ONNX model**:
+3. **(Optional) Re-export the models, e.g. with your own classes**:
 
-   You can export YOLOv8n to ONNX format using the Ultralytics library:
-
-   ```bash
-   pip install ultralytics
-   ```
-
-   ```python
-   from ultralytics import YOLO
-
-   # Load YOLOv8n model
-   model = YOLO('yolov8n.pt')
-
-   # Export to ONNX format
-   model.export(format='onnx', opset=12, simplify=True, dynamic=False, imgsz=640)
-   ```
-
-   Then move the generated `yolov8n.onnx` file to `public/models/`:
+   The three `public/models/model-*.onnx` files and `labels.json` are committed. To make the
+   More objects tier detect different things, edit `NAMES` in `public/models/importModel.py` and run:
 
    ```bash
-   mkdir -p public/models
-   mv yolov8n.onnx public/models/
+   pip install ultralytics onnxruntime
+   cd public/models && python importModel.py
    ```
+
+   This rewrites all three models + `labels.json` next to the script. Keep the
+   list focused (a few hundred at most); open-vocabulary accuracy drops as it grows.
 
 4. **Start the development server**:
 
@@ -114,10 +111,35 @@ realTimeOD/
 ### First-Time Usage
 
 1. Allow camera access when prompted
-2. Click **"Load Model"** to initialize the ONNX model
+2. Click **"Load Model"**. It loads the Fast model, and switches to Accurate automatically if your GPU is quick enough
 3. Click **"Start Detection"** to begin real-time object detection
-4. Use the camera selector to switch between devices
-5. Monitor FPS and detection count in the sidebar
+4. Use the camera selector to switch between devices, or **"Upload video"** to run on a file
+5. Use **Quality** (Fast / Accurate / More objects) and **Min confidence** to trade speed, missed objects and wrong boxes
+
+## 📏 Models: measured accuracy vs speed
+
+All tiers use a 384×640 input (fits 16:9 video with little padding) and fp16 weights.
+Accuracy is on 500 COCO val2017 images that none of the models were trained on; speed is
+WebGPU on an Intel UHD 620 laptop iGPU (headless Chrome).
+
+| Tier | Model | Classes | mAP50-95 | Inference | Download |
+|---|---|---|---|---|---|
+| Fast | YOLO26n | 80 | 0.380 | ~120 ms | 5 MB |
+| Accurate | YOLO26s | 80 | 0.475 | ~270 ms | 19 MB |
+| More objects | YOLOE-26s | 268 | 0.370 | ~330 ms | 21 MB |
+| *(previous app)* | *yolov8n @640* | *80* | *0.393* | *~220 ms* | *13 MB* |
+
+The confidence slider trades precision for recall (Fast tier, COCO val):
+
+| Min confidence | Boxes that are correct | Real objects found |
+|---|---|---|
+| 0.2 | 72% | 48% |
+| **0.25 (default)** | best balance | |
+| 0.4 | 87% | 37% |
+| 0.6 | 94% | 27% |
+
+On live video, the tracker also hides any box that isn't detected in at least 2 frames,
+which removes most one-frame false positives.
 
 ## 🎛️ Configuration
 
@@ -126,13 +148,18 @@ realTimeOD/
 Edit `src/utils/constants.js` to adjust detection parameters:
 
 ```javascript
+export const MODELS = {
+  fast: { label: "Fast", path: "/models/model-fast.onnx", inputWidth: 640, inputHeight: 384 },
+  accurate: { label: "Accurate", path: "/models/model-accurate.onnx", inputWidth: 640, inputHeight: 384 },
+  more: { label: "More objects", path: "/models/model-more.onnx", labelsPath: "/models/labels.json", inputWidth: 640, inputHeight: 384 },
+};
+
 export const MODEL_CONFIG = {
-  modelPath: "/models/yolov8n.onnx",
-  inputWidth: 640,
-  inputHeight: 640,
-  confidenceThreshold: 0.25, // Minimum confidence to show detections
+  confidenceThreshold: 0.25, // Default "Min confidence" (score needed to show an object)
+  lowConfidenceThreshold: 0.1, // Can only keep an already-confirmed object's box alive
   iouThreshold: 0.45, // IoU threshold for NMS
   maxDetections: 100, // Maximum number of detections
+  autoUpgradeMs: 40, // Switch to Accurate if Fast runs faster than this
 };
 ```
 
@@ -180,7 +207,7 @@ Deploy to any static hosting service:
 
 1. **HTTPS Required**: Camera access requires HTTPS in production
 2. **Headers for ONNX Runtime**: Some hosts may need CORS headers configured
-3. **Model File**: Ensure `yolov8n.onnx` is included in deployment
+3. **Model Files**: Ensure the three `model-*.onnx` files and `labels.json` are included in deployment
 
 ### Example Netlify Configuration
 
@@ -202,10 +229,11 @@ Create `netlify.toml`:
 
 To use a different YOLO model:
 
-1. Export your model to ONNX format with input size 640x640
-2. Place it in `public/models/`
-3. Update `modelPath` in `src/utils/constants.js`
-4. Adjust output processing if using different YOLO version
+1. Export any Ultralytics YOLO detect/seg model (v8, 11, 26, YOLOE) to ONNX. For YOLO26 pass `end2end=False`
+2. Place it in `public/models/`, plus a labels JSON (array of class names) if it isn't an 80-class COCO model
+3. Update `path`, `inputWidth`, `inputHeight` (and `labelsPath` if needed) of a tier in `MODELS` (`src/utils/constants.js`)
+
+The output shape is read from the model, so no postprocessing changes are needed.
 
 ## 🐛 Troubleshooting
 
@@ -217,7 +245,7 @@ To use a different YOLO model:
 
 ### Model Not Loading
 
-- Verify `yolov8n.onnx` exists in `public/models/`
+- Verify the three `model-*.onnx` files exist in `public/models/`
 - Check browser console for error messages
 - Ensure model was exported correctly
 
@@ -226,7 +254,9 @@ To use a different YOLO model:
 - Check if WebGPU is enabled (see execution provider in UI)
 - Try reducing camera resolution
 - Close other GPU-intensive applications
-- Consider using a lighter model (YOLOv8n is already the smallest)
+- Switch Quality to **Fast**
+- Re-export at a smaller size in `TIERS` (`importModel.py`) and update `inputWidth`/`inputHeight` to match
+- On WebAssembly, check the console says `isolated: true` (COOP/COEP headers), otherwise it runs single-threaded
 
 ### WebGPU Not Available
 
@@ -242,15 +272,8 @@ To enable WebGPU:
 
 ### Adding Custom Classes
 
-Edit `src/utils/constants.js` to modify the class list:
-
-```javascript
-export const COCO_CLASSES = [
-  "person",
-  "bicycle",
-  "car", // ... your classes
-];
-```
+Classes are baked into the model at export time. Edit `NAMES` in
+`public/models/importModel.py` and re-run it (see Installation step 3).
 
 ### Changing Colors
 
@@ -274,24 +297,26 @@ All component styles are in separate CSS files:
 
 1. **Reduce Input Resolution**: Lower resolution = faster inference
 2. **Adjust Confidence Threshold**: Higher threshold = fewer detections to process
-3. **Use OffscreenCanvas**: Automatically used when available
-4. **Optimize Camera Settings**: Lower camera resolution if not needed
-5. **Close Unnecessary Tabs**: Free up GPU resources
+3. **Optimize Camera Settings**: Lower camera resolution if not needed
+4. **Close Unnecessary Tabs**: Free up GPU resources
 
 ## 🔒 Privacy & Security
 
 - **No Data Collection**: Nothing is sent to any server
 - **Local Processing**: All inference happens on your device
-- **No Cookies**: No tracking or analytics
+- **No Cookies**: The deployed site uses Vercel Web Analytics (cookieless, anonymous page views only); camera and video frames never leave the device
 - **Open Source**: Fully inspectable code
 
 ## 📄 License
 
 Apache 2.0 License - feel free to use this project for any purpose.
 
+Note: the model weights in `public/models/` (YOLO26, YOLOE by Ultralytics) are licensed separately under AGPL-3.0.
+
 ## Acknowledgments
 
-- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) - Object detection model
+- [Ultralytics YOLO26](https://docs.ultralytics.com/models/yolo26/) and [YOLOE](https://docs.ultralytics.com/models/yoloe/) - Detection models (AGPL-3.0)
+- [ByteTrack](https://github.com/ifzhang/ByteTrack) - Tracking approach the tracker is based on
 - [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) - Inference engine
 - [React](https://react.dev/) - UI framework
 - [Vite](https://vitejs.dev/) - Build tool
@@ -308,8 +333,10 @@ For issues, questions, or contributions:
 
 Potential improvements:
 
-- [ ] Multiple model support (YOLOv8s, YOLOv8m, etc.)
-- [ ] Video file upload support
+- [ ] Multiple model support (e.g. RF-DETR)
+- [x] Video file upload support
+- [x] Object tracking
+- [ ] Speed estimation / line-crossing counts for vehicles
 - [ ] Screenshot/recording functionality
 - [ ] Detection statistics and analytics
 - [ ] Custom model training integration
