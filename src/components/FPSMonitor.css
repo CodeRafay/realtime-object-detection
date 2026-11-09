@@ -18,6 +18,19 @@
   line-height: 1;
 }
 
+.fps-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.display-fps {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
 .execution-provider {
   font-size: 0.9rem;
   color: var(--text-secondary);

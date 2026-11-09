@@ -193,7 +193,7 @@ export const CAMERA_CONFIG = {
 - [ ] Model loads without errors
 - [ ] Detection starts and runs smoothly
 - [ ] Bounding boxes sit on the objects (never in black bars)
-- [ ] Detections/sec is displayed
+- [ ] Model FPS and display FPS are shown
 - [ ] Switching Quality (Fast / Accurate / More objects) works while detecting
 - [ ] Min confidence slider hides boxes below its value
 - [ ] Video upload and "Back to camera" work
