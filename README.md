@@ -1,9 +1,17 @@
-# 🎯 Real-Time Object Detection Web App
+# 🎯 Real-Time Object Detection in the Browser (YOLO26 + WebGPU)
 
-A high-performance, privacy-first web application for real-time object detection that runs **entirely in your browser** using WebGPU acceleration and ONNXRuntime-Web. No server required, no data leaves your device.
+**Detect and track objects live from your webcam or a video file, entirely in your browser.** Free, open source and private: the YOLO26 / YOLOE models run on your own GPU through WebGPU and ONNX Runtime Web, so nothing is uploaded, and there's no server, no account and no install.
 
+### ▶ [Try the live demo](https://webgpu-object-detection.vercel.app/)
+
+[![Live demo](https://img.shields.io/badge/demo-live-4ECDC4)](https://webgpu-object-detection.vercel.app/)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+![WebGPU](https://img.shields.io/badge/WebGPU-enabled-0f3460)
+![YOLO26](https://img.shields.io/badge/model-YOLO26%20%7C%20YOLOE-45B7D1)
 ![React](https://img.shields.io/badge/React-18.3-blue)
 ![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-1.23-green)
+
+[![App screenshot: tracked bounding boxes around two people and a bus, with the quality and confidence controls](docs/demo.jpg)](https://webgpu-object-detection.vercel.app/)
 
 ## ✨ Features
 

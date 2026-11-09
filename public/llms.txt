@@ -1,0 +1,39 @@
+# Real-Time Object Detection (WebGPU)
+
+> Free, open-source web app that detects and tracks objects in a webcam feed or a video file in real time, entirely inside the browser. It uses YOLO26 and YOLOE models running on the device's GPU through WebGPU and ONNX Runtime Web. Nothing is uploaded: no server, no account, no install.
+
+- Live app: [webgpu-object-detection.vercel.app](https://webgpu-object-detection.vercel.app/)
+- Source code: [github.com/CodeRafay/realtime-object-detection](https://github.com/CodeRafay/realtime-object-detection)
+- Author: [Rafay Adeel](https://github.com/CodeRafay)
+- License: Apache-2.0 (app code); model weights by Ultralytics are AGPL-3.0
+
+## Features
+
+- Webcam or uploaded video file as input
+- Three quality modes:
+  - Fast: YOLO26n, 80 everyday COCO object classes
+  - Accurate: YOLO26s, 80 COCO classes, about 25% more accurate than Fast
+  - More objects: YOLOE-26s open-vocabulary model, 268 classes including smartwatch, glasses, earbuds, keys and wallet
+- Object tracking (ByteTrack-style): every object gets a stable ID and boxes move smoothly with it between model frames
+- Adjustable minimum-confidence slider
+- Runs on WebGPU, with a WebAssembly fallback for browsers without WebGPU
+- Privacy: camera and video frames never leave the device
+
+## Measured performance
+
+Accuracy (mAP50-95) on 500 COCO val2017 images none of the models were trained on; speed on an Intel UHD 620 laptop integrated GPU in Chrome with WebGPU:
+
+- Fast (YOLO26n): mAP 0.380, 7-8 model frames per second, 5 MB download
+- Accurate (YOLO26s): mAP 0.475, about 2 model frames per second, 19 MB
+- More objects (YOLOE-26s): mAP 0.370, about 2 model frames per second, 21 MB
+- Boxes are redrawn at the display rate (about 60 FPS) between model frames
+
+## Requirements
+
+A recent Chromium browser (Chrome or Edge 113+) for WebGPU. Firefox and Safari run on the slower WebAssembly fallback. Camera access requires HTTPS.
+
+## Docs
+
+- [README](https://github.com/CodeRafay/realtime-object-detection#readme): features, setup, measured accuracy and speed
+- [Architecture](https://github.com/CodeRafay/realtime-object-detection/blob/main/ARCHITECTURE.md): how a video frame flows through detection, tracking and drawing
+- [Model setup](https://github.com/CodeRafay/realtime-object-detection/blob/main/MODEL_SETUP.md): the three models, re-exporting, and using custom models

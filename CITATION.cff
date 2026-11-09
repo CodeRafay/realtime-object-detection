@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Real-Time Object Detection in the Browser (YOLO26 + WebGPU)"
+abstract: >-
+  Free, open-source web app that detects and tracks objects in a webcam feed or
+  video file in real time, entirely inside the browser, using YOLO26 and YOLOE
+  models on WebGPU via ONNX Runtime Web. Nothing is uploaded.
+type: software
+authors:
+  - family-names: Adeel
+    given-names: Rafay
+version: 2.0.0
+date-released: 2026-11-09
+license: Apache-2.0
+repository-code: "https://github.com/CodeRafay/realtime-object-detection"
+url: "https://webgpu-object-detection.vercel.app/"
+keywords:
+  - object detection
+  - object tracking
+  - YOLO26
+  - YOLOE
+  - WebGPU
+  - ONNX Runtime Web
+  - computer vision
+  - in-browser machine learning

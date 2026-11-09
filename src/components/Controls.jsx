@@ -31,7 +31,7 @@ export default function Controls({
   return (
     <div className="controls">
       <div className="controls-section">
-        <h3>Model</h3>
+        <h2>Model</h2>
         {!isModelLoaded && !isModelLoading && (
           <button onClick={onLoadModel} className="btn-primary">
             Load Model
@@ -86,9 +86,10 @@ export default function Controls({
 
       {devices.length > 0 && (
         <div className="controls-section">
-          <h3>Camera</h3>
-          <select 
-            value={selectedDeviceId || ''} 
+          <h2>Camera</h2>
+          <select
+            aria-label="Camera"
+            value={selectedDeviceId || ''}
             onChange={(e) => onChangeCamera(e.target.value)}
             className="camera-select"
           >
@@ -107,7 +108,7 @@ export default function Controls({
       )}
 
       <div className="controls-section">
-        <h3>Video file</h3>
+        <h2>Video file</h2>
         <input
           ref={fileInputRef}
           type="file"
@@ -132,7 +133,7 @@ export default function Controls({
       {/* Mobile-friendly camera toggle button */}
       {devices.length === 0 && (
         <div className="controls-section">
-          <h3>Camera</h3>
+          <h2>Camera</h2>
           <button onClick={onSwitchCamera} className="btn-secondary">
             📷 Flip Camera
           </button>

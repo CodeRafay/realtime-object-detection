@@ -14,7 +14,7 @@
   margin-bottom: 0;
 }
 
-.controls-section h3 {
+.controls-section h2 {
   font-size: 1rem;
   margin-bottom: 1rem;
   color: var(--text-primary);
@@ -134,7 +134,7 @@ button:last-child {
     padding: 0.6rem 1.2rem;
   }
 
-  .controls-section h3 {
+  .controls-section h2 {
     font-size: 0.9rem;
   }
 }

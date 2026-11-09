@@ -2,14 +2,180 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Real-time object detection running entirely in your browser with WebGPU acceleration" />
-    <meta name="theme-color" content="#000000" />
-    <title>Real-Time Object Detection | WebGPU</title>
+    <title>Real-Time Object Detection in Your Browser – Free &amp; Private</title>
+    <meta name="description" content="Detect and track objects live from your webcam or a video, right in your browser. Free and private (nothing is uploaded). YOLO26 + WebGPU, 268 object types." />
+    <meta name="author" content="Rafay Adeel" />
+    <link rel="canonical" href="https://webgpu-object-detection.vercel.app/" />
+    <meta name="theme-color" content="#16213e" />
+
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Link previews (LinkedIn, X, WhatsApp, Slack, Discord) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Real-Time Object Detection" />
+    <meta property="og:url" content="https://webgpu-object-detection.vercel.app/" />
+    <meta property="og:title" content="Real-Time Object Detection in Your Browser – Free & Private" />
+    <meta property="og:description" content="Detect and track objects live from your webcam or a video. Runs on your own GPU with WebGPU + YOLO26; nothing is uploaded." />
+    <meta property="og:image" content="https://webgpu-object-detection.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Browser app drawing tracked bounding boxes around people and a bus, with labels like person #5 89%" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Real-Time Object Detection in Your Browser – Free & Private" />
+    <meta name="twitter:description" content="Detect and track objects live from your webcam or a video. Runs on your own GPU with WebGPU + YOLO26; nothing is uploaded." />
+    <meta name="twitter:image" content="https://webgpu-object-detection.vercel.app/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": "https://webgpu-object-detection.vercel.app/#app",
+            "name": "Real-Time Object Detection",
+            "url": "https://webgpu-object-detection.vercel.app/",
+            "description": "Free web app that detects and tracks objects in a webcam feed or video file in real time, entirely in the browser, using YOLO26 and YOLOE models on WebGPU. Nothing is uploaded.",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Any (web browser with WebGPU; WebAssembly fallback)",
+            "browserRequirements": "Chrome or Edge 113+ recommended (WebGPU)",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "featureList": [
+              "Real-time object detection from webcam or uploaded video",
+              "Object tracking with stable IDs",
+              "Three quality modes: Fast (YOLO26n), Accurate (YOLO26s), More objects (YOLOE, 268 classes)",
+              "Adjustable minimum confidence",
+              "Runs 100% on-device; no uploads"
+            ],
+            "screenshot": "https://webgpu-object-detection.vercel.app/og-image.png",
+            "author": { "@id": "https://github.com/CodeRafay#person" }
+          },
+          {
+            "@type": "SoftwareSourceCode",
+            "name": "realtime-object-detection",
+            "codeRepository": "https://github.com/CodeRafay/realtime-object-detection",
+            "programmingLanguage": ["JavaScript", "Python"],
+            "runtimePlatform": "Web browser (WebGPU, ONNX Runtime Web)",
+            "license": "https://www.apache.org/licenses/LICENSE-2.0",
+            "targetProduct": { "@id": "https://webgpu-object-detection.vercel.app/#app" },
+            "author": { "@id": "https://github.com/CodeRafay#person" }
+          },
+          {
+            "@type": "Person",
+            "@id": "https://github.com/CodeRafay#person",
+            "name": "Rafay Adeel",
+            "url": "https://github.com/CodeRafay"
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is it free?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is free and open source (Apache-2.0). There is no account, no install and no usage limit, because everything runs on your own device." }
+              },
+              {
+                "@type": "Question",
+                "name": "Is my camera or video uploaded anywhere?",
+                "acceptedAnswer": { "@type": "Answer", "text": "No. Video frames are processed by the AI model inside your browser, on your own GPU, and are never sent to a server. The site only counts anonymous page views." }
+              },
+              {
+                "@type": "Question",
+                "name": "Which browsers and devices does it work on?",
+                "acceptedAnswer": { "@type": "Answer", "text": "It works best in Chrome or Edge 113 or newer on a laptop or desktop, using WebGPU. Firefox and Safari use a slower WebAssembly fallback. Camera access requires HTTPS, which this site uses." }
+              },
+              {
+                "@type": "Question",
+                "name": "How accurate and fast is it?",
+                "acceptedAnswer": { "@type": "Answer", "text": "On 500 COCO val2017 test images, the Accurate mode (YOLO26s) scores 0.475 mAP and the Fast mode (YOLO26n) 0.380 mAP. On a laptop with integrated graphics, Fast processes 7 to 8 frames per second, and boxes are redrawn at about 60 FPS in between." }
+              },
+              {
+                "@type": "Question",
+                "name": "Can it detect a smartwatch, glasses or keys?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes, in the More objects mode. It uses an open-vocabulary YOLOE model with 268 everyday object classes, including smartwatch, glasses, earbuds, keys and wallet. The Fast and Accurate modes detect the 80 standard COCO classes." }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I use it on traffic or other videos?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. Click Upload video to run detection on a video file from your device. Each car or person gets a stable tracking ID and its box follows it as it moves. The video never leaves your device." }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Plain HTML on purpose: readable by search engines and AI crawlers that don't run JavaScript -->
+    <section class="about" id="about" aria-labelledby="about-title">
+      <h2 id="about-title">Real-time object detection that runs in your browser</h2>
+      <p>
+        This free app finds and tracks objects in your webcam feed or in a video file, live. The AI model
+        (<strong>YOLO26</strong> or <strong>YOLOE</strong>) runs on your own graphics card through
+        <strong>WebGPU</strong> and ONNX Runtime Web, so there is no server, no account and no install,
+        and your video never leaves your device.
+      </p>
+
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Pick a source:</strong> your camera, or upload a video (for example traffic footage).</li>
+        <li><strong>Detect:</strong> the model finds objects in each frame on your GPU.</li>
+        <li><strong>Track:</strong> each object gets a stable ID (like <code>car #12</code>) and its box glides with it between frames.</li>
+        <li><strong>Tune:</strong> switch between Fast, Accurate and More objects, and set the minimum confidence.</li>
+      </ol>
+
+      <h2>Measured performance</h2>
+      <div class="about-table-wrap">
+        <table aria-describedby="perf-note">
+          <thead>
+            <tr><th scope="col">Mode</th><th scope="col">Model</th><th scope="col">Objects</th><th scope="col">Accuracy (mAP)</th><th scope="col">Model FPS</th><th scope="col">Download</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Fast</td><td>YOLO26n</td><td>80</td><td>0.380</td><td>7–8</td><td>5 MB</td></tr>
+            <tr><td>Accurate</td><td>YOLO26s</td><td>80</td><td>0.475</td><td>~2</td><td>19 MB</td></tr>
+            <tr><td>More objects</td><td>YOLOE-26s</td><td>268</td><td>0.370</td><td>~2</td><td>21 MB</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="about-note" id="perf-note">Accuracy on 500 COCO val2017 images; speed on a laptop with Intel UHD 620 graphics (Chrome, WebGPU).</p>
+
+      <h2>Frequently asked questions</h2>
+      <div class="faq">
+        <h3>Is it free?</h3>
+        <p>Yes. It is free and open source (Apache-2.0). There is no account, no install and no usage limit, because everything runs on your own device.</p>
+
+        <h3>Is my camera or video uploaded anywhere?</h3>
+        <p>No. Video frames are processed by the AI model inside your browser, on your own GPU, and are never sent to a server. The site only counts anonymous page views.</p>
+
+        <h3>Which browsers and devices does it work on?</h3>
+        <p>It works best in Chrome or Edge 113 or newer on a laptop or desktop, using WebGPU. Firefox and Safari use a slower WebAssembly fallback. Camera access requires HTTPS, which this site uses.</p>
+
+        <h3>How accurate and fast is it?</h3>
+        <p>On 500 COCO val2017 test images, the Accurate mode (YOLO26s) scores 0.475 mAP and the Fast mode (YOLO26n) 0.380 mAP. On a laptop with integrated graphics, Fast processes 7 to 8 frames per second, and boxes are redrawn at about 60 FPS in between.</p>
+
+        <h3>Can it detect a smartwatch, glasses or keys?</h3>
+        <p>Yes, in the More objects mode. It uses an open-vocabulary YOLOE model with 268 everyday object classes, including smartwatch, glasses, earbuds, keys and wallet. The Fast and Accurate modes detect the 80 standard COCO classes.</p>
+
+        <h3>Can I use it on traffic or other videos?</h3>
+        <p>Yes. Click Upload video to run detection on a video file from your device. Each car or person gets a stable tracking ID and its box follows it as it moves. The video never leaves your device.</p>
+      </div>
+
+      <footer class="about-footer">
+        <p>
+          100% client-side • Open source on
+          <a href="https://github.com/CodeRafay/realtime-object-detection">GitHub</a>
+          • Built by <a href="https://github.com/CodeRafay">Rafay Adeel</a>
+        </p>
+        <p class="about-credits">YOLO26 + YOLOE models by Ultralytics • ByteTrack-style tracking • ONNX Runtime Web</p>
+      </footer>
+    </section>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

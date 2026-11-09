@@ -1,8 +1,32 @@
 {
   "name": "realtime-object-detection",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Real-time web-based object detection using WebGPU and ONNXRuntime-Web",
+  "description": "Free real-time object detection and tracking in the browser with YOLO26 + WebGPU + ONNX Runtime Web. 100% on-device, no uploads.",
+  "keywords": [
+    "object-detection",
+    "yolo",
+    "yolo26",
+    "yoloe",
+    "webgpu",
+    "onnxruntime-web",
+    "computer-vision",
+    "object-tracking",
+    "bytetrack",
+    "real-time",
+    "browser",
+    "react"
+  ],
+  "homepage": "https://webgpu-object-detection.vercel.app/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodeRafay/realtime-object-detection.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CodeRafay/realtime-object-detection/issues"
+  },
+  "author": "Rafay Adeel (https://github.com/CodeRafay)",
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

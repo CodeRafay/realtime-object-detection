@@ -160,13 +160,13 @@ function App() {
 
             {(cameraError || modelError) && (
               <div className="error-message">
-                <h3>⚠️ Error</h3>
+                <h2>⚠️ Error</h2>
                 <p>{cameraError || modelError}</p>
               </div>
             )}
 
             <div className="info-box">
-              <h3>ℹ️ Info</h3>
+              <h2>ℹ️ Info</h2>
               <ul>
                 <li>Source: {videoFileUrl ? '🎞️ Video file' : isCameraInitialized ? '✓ Camera' : '✗ Inactive'}</li>
                 <li>Model: {model ? '✓ Loaded' : '✗ Not loaded'}</li>
@@ -177,13 +177,7 @@ function App() {
         </div>
       </main>
 
-      <footer className="app-footer">
-        <p>100% client-side • Zero server • Maximum privacy</p>
-        <p className="model-info">
-          YOLO26 + YOLOE open-vocabulary models • ByteTrack-style tracking
-        </p>
-      </footer>
-
+      {/* The page footer lives in index.html's static About section, readable without JavaScript */}
       <Analytics />
     </div>
   );
